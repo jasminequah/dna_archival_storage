@@ -40,6 +40,7 @@ average = {
   'del_rate': 0.0078
 }
 
+# Illumina error rates
 sequencing = {
   'sub_rate': 0.005,
   'ins_rate': 0.001,

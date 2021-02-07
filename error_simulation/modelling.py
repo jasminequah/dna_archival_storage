@@ -2,10 +2,10 @@ from random import random, randint
 import math
 from collections import Counter, Iterable
 
-from error_simulation import data_config, substitution
+from error_simulation import data_config, insertion, substitution
 import time
 
-debug = True
+debug = False
 
 nuc2str = {
   0: 'A',
@@ -54,10 +54,13 @@ def decode_file():
   with open("input.txt") as f:
     str_oligos = f.read().splitlines()
 
-
-  oligos = [[str2nuc[s] for s in oligo] for oligo in str_oligos]
-
+  oligos = decode_nucs(str_oligos)
   return oligos
+
+
+def decode_nucs(oligos):
+  return [[str2nuc[s] for s in oligo] for oligo in oligos]
+
 
 def read_file(file_name):
   with open(file_name) as f:
@@ -70,13 +73,16 @@ def read_file(file_name):
 
 
 def encode_file(oligos):
-
-  str_oligos = [''.join([nuc2str[s] for s in oligo]) for oligo in oligos]
+  str_oligos = encode_nucs(oligos)
 
   with open("output.txt", "w") as f:
     for oligo in str_oligos:
 
       f.write("%s\n" % oligo)
+
+
+def encode_nucs(oligos):
+  return [''.join([nuc2str[s] for s in oligo]) for oligo in oligos]
 
 # TODO: Account for termination factor of 0.05% at every iteration. Start of inner loop.
 def synthesis(oligos, method):
@@ -106,12 +112,11 @@ def synthesis(oligos, method):
       new_nuc = nuc
 
       if random() < sub_rate:
-        new_nuc = substitution.getSubNucleotide(nuc, 'average')
-
+        new_nuc = substitution.getSubNucleotide(nuc, 'average') # TODO
         sub_counter += 1
 
       elif random() < ins_rate:
-        new_oligo.append(0) # Adding new nucleotide.
+        new_oligo.append(insertion.getInsertedNucleotide(new_nuc, 'custom_synthesis')) # Adding new nucleotide.
         ins_counter += 1
 
       elif random() < del_rate:
@@ -120,13 +125,7 @@ def synthesis(oligos, method):
         continue
 
       new_oligo.append(new_nuc)
-    '''
-    if debug:
 
-      print(f'Sub counter for olgio {i}: {sub_counter}')
-      print(f'Ins counter for olgio {i}: {ins_counter}')
-      print(f'Del counter for olgio {i}: {del_counter}')
-    '''
     syn_oligos.append(new_oligo)
 
     # Used to track metrics
@@ -342,12 +341,11 @@ def sequence(oligos, method):
       new_nuc = nuc
 
       if random() < sub_rate:
-        new_nuc = substitution.getSubNucleotide(nuc, 'average')
-
+        new_nuc = substitution.getSubNucleotide(nuc, 'custom_sequencing')
         sub_counter += 1
 
       elif random() < ins_rate:
-        new_oligo.append(0) # Adding new nucleotide.
+        new_oligo.append(insertion.getInsertedNucleotide(new_nuc, 'custom_sequencing')) # Adding new nucleotide.
         ins_counter += 1
 
       elif random() < del_rate:
