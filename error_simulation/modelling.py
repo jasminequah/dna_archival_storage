@@ -5,7 +5,7 @@ from collections import Counter, Iterable
 from error_simulation import data_config, insertion, substitution
 import time
 
-debug = False
+debug = True
 
 nuc2str = {
   0: 'A',
