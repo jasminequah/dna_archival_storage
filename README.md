@@ -1,11 +1,35 @@
 # dna_archival_storage
 
 ## Setup
-Only standard libraries used (for now).
+To clone repository and submodules:
+```
+git clone --recursive https://github.com/jasminequah/dna_archival_storage
+```
 
-## `simulate_errors.py`
-This script uses the `error_simulation` module to simulate synthesis and sequencing errors on a nucleotide sequence. It builds upon the work from a previous MEng student's project to model these errors. The libraries use the error profiles defined in their project report, which we will ideally replace with ours.
+If running basic simulation (no basecalling), only standard libraries used.
 
-## Future Work (in progress)
-* The DNA sequence on which errors are simulated is currently hardcoded, I will update the script to take a file as an argument
-* Current error simulation assumes indels & substitution errors iid among sequence. Currently experimenting with trying to simulate errors using Scrappie for signal generation & Bonito basecalling.
+If running simulation with raw signal simulation using Scrappie & Bonito basecalling, run `./setup.sh` first. A GPU is required to run the Bonito basecaller.
+
+## Usage
+Two modes of error simulation are currently available: one using given error rates and the `error_simulation` package (see below for more detail), and the other using Scrappie for signal generation and Bonito basecalling.
+
+In Python, to run the simulation:
+```
+from simulation import simulate_errors
+simulate_errors('AGGAATCTAGGCAGTAATAAATACATCAATCAATCAACTTAGCTATGCATTCATGAATAG', True)
+```
+Pass `True` for the second parameter to run the basic simulation (default), and `False` to run the simulation using Scrappie and Bonito.
+
+## `error_simulation`
+This package is used to simulate simple synthesis and sequencing errors on a nucleotide sequence for the basic simulation. It builds upon the work from a previous MEng student's project to model these errors. It uses the error profiles defined in their project report, which we will ideally replace with ours. It also assumes indels & substitution errors are iid among the sequence.
+
+## Scrappie & Bonito simulation:
+Simulates synthesis errors using same method as before, but simulates generated signals from sequencing process using Scrappie for R9.4.1 pore & basecalls these using Bonito basecaller with CTC architecture. Could also compare if DeepSimulator gives more representative simulation.
+
+## TODOs
+* Parse quality scores for second simulation mode into probabilities
+* Validate both types of error simulation with real data we have synthesised & sequenced
+* Update error rates for basic simulation based on real data
+* Option to save intermediate FAST5 & FASTQ files for second simulation mode
+* Maybe get the posterior probabilities for each possible base?
+* Utils for error analysis

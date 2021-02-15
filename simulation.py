@@ -1,17 +1,49 @@
-# import scrappy
-# import numpy as np
-# import bonito
+import numpy as np
+import os
+import scrappy
+import tempfile
 
 from error_simulation import modelling
 
-# from uuid import uuid4
-# from fast5_research import Fast5
+from fast5_research import Fast5
+from uuid import uuid4
 
-# Encoder input: array of letters in {A, C, T, G} & list determining mapping from {0,1}^2 to A,C,T,G
-# Encoder output: array of letters from {A, C, T, G} which may be longer
 
-# Decoder input: array of letters in {A, C, T, G, E} & confidence
-# Decoder output: array of letters in {A, C, T, G}
+def simulate_errors(seq, basic=True):
+    """
+    Simulates errors occuring on given DNA sequence during the process of synthesis & sequencing.
+    Parameters
+    ----------
+    seq : string
+        DNA sequence errors will be simulated on
+    basic : bool
+        Determines whether to use simple simulation using predefined error rates (no quality scores),
+        or a more advanced model which simulates signal generation and basecalling.
+    Returns
+    -------
+    string
+        DNA sequence containing simulated errors from synthesis and sequencing process.
+    """
+    print("Simulating synthesis errors...")
+    syn_data = simulate_synthesis(seq)
+
+    if basic:
+        print("Simulating sequencing errors...")
+        seq_data = simulate_sequencing(syn_data)
+        return ''.join(seq_data)
+    else:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            print("Simulating sequencing...")
+            simulate_read(syn_data, tmpdir, 'read.fast5')
+
+            print("Simulating basecalling...")
+            simulate_basecalling(tmpdir, tmpdir, 'basecalled.fastq')
+            
+            with open(os.path.join(tmpdir, 'basecalled.fastq')) as basecalled:
+                lines = basecalled.readlines()
+                out_seq, qscores = lines[1].strip(), lines[3].strip()
+                return out_seq
+
 
 def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
     """
@@ -29,7 +61,7 @@ def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
         Deletion error rate for synthesis
     Returns
     -------
-    string[]
+    string
         List of nucleotide sequences with simulated synthesis errors
     """
     error_config = {
@@ -40,16 +72,16 @@ def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
 
     raw_data = modelling.decode_nucs(seq)
     syn_oligos, _ = modelling.synthesis(raw_data, error_config)
-    return modelling.encode_nucs(syn_oligos)
+    return ''.join(modelling.encode_nucs(syn_oligos))
 
 
 def simulate_sequencing(seq, sub_rate=0.15, ins_rate=0.05, del_rate=0.05):
     """
-    Simulates synthesis errors on sequence, outputs sequence with errors typical of sequencing
+    Simulates sequencing errors on sequence, outputs sequence with errors typical of sequencing
     process. Built upon existing modelling code.
     Parameters
     ----------
-    seq : string[]
+    seq : string
         List of nucleotide sequences to simulate sequencing errors on
     sub_rate : float, optional
         Substitution error rate for sequencing
@@ -59,7 +91,7 @@ def simulate_sequencing(seq, sub_rate=0.15, ins_rate=0.05, del_rate=0.05):
         Deletion error rate for sequencing
     Returns
     -------
-    string[]
+    string
         List of nucleotide sequences with simulated synthesis errors
     """
     error_config = {
@@ -70,18 +102,23 @@ def simulate_sequencing(seq, sub_rate=0.15, ins_rate=0.05, del_rate=0.05):
 
     raw_data = modelling.decode_nucs(seq)
     seq_oligos = modelling.sequence(raw_data, error_config)
-    return modelling.encode_nucs(seq_oligos)
+    return ''.join(modelling.encode_nucs(seq_oligos))
 
 
-def simulate_read(seq, filename='reads/test.fast5'):
+def simulate_read(seq, out_dir, filename, id='test_read'):
     """
     Simulates nanopore sequencer, writes to file
     Parameters
     ----------
     seq : string
         Nucleotide sequence
-    filename: string
-        Name of FAST5 file which will be written as result of read
+    out_dir : string
+        Working directory to write intermediate results to.
+    filename : string
+        Name of FAST5 file which will be written as result of read.
+        directory by default.
+    id : string, optional
+        ID given to read
     """
 
     # Using https://nanoporetech.github.io/fast5_research/examples.html as a reference
@@ -111,50 +148,31 @@ def simulate_read(seq, filename='reads/test.fast5'):
         'duration': len(raw_data),
         'read_number': 1,
         'start_mux': 1,
-        'read_id': 'test_read',
+        'read_id': id,
         'scaling_used': 1,
         'median_before': 0,
     }
     tracking_id = {
         'exp_start_time': '1970-01-01T00:00:00Z',
-        'run_id': 'test_read',
+        'run_id': id,
         'flow_cell_id': 'FAH00000',
     }
     context_tags = {}
 
-    with Fast5.New(filename, 'w', tracking_id=tracking_id, context_tags=context_tags, channel_id=channel_id) as h:
+    with Fast5.New(os.path.join(out_dir, filename), 'w', tracking_id=tracking_id, context_tags=context_tags, channel_id=channel_id) as h:
         h.set_raw(raw_data, meta=read_id, read_number=1)
 
 
-def simulate_basecalling(file):
+def simulate_basecalling(reads_dir, out_dir, out_file='basecalled.fastq'):
     """
     Simulates nanopore sequencer, writes to file
     Parameters
     ----------
-    file : string
-        Name of FAST5 file input to basecaller
-    Returns
-    -------
-    TODO
+    reads_dir : string
+        Directory from which all FAST5 files will be basecalled.
+    out_file : string, optional
+        File to write basecalled results to.
     """
-    pass
+    out_path = os.path.join(out_dir, out_file)
+    os.system("bonito basecaller --fastq dna_r9.4.1@v2 %s > %s" % (reads_dir, out_path))
 
-
-def main():
-
-  data = 'ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT'
-  print("Encoded data:\n %s" % data)
-
-  print("Simulating synthesis errors...")
-  syn_data = simulate_synthesis(data)
-
-  print("Synthesised data:\n %s" % ''.join(syn_data))
-
-  print("Simulating sequencing errors...")
-  seq_data = simulate_sequencing(syn_data)
-
-  print("Data read back:\n %s" % ''.join(seq_data))
-
-
-if __name__ == "__main__":
-  main()
