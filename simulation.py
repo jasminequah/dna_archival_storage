@@ -30,19 +30,20 @@ def simulate_errors(seq, basic=True):
     if basic:
         print("Simulating sequencing errors...")
         seq_data = simulate_sequencing(syn_data)
-        return ''.join(seq_data)
+        return ''.join(seq_data), [0.25] * len(seq_data)
     else:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            print("Simulating sequencing...")
-            simulate_read(syn_data, tmpdir, 'read.fast5')
-
-            print("Simulating basecalling...")
-            simulate_basecalling(tmpdir, tmpdir, 'basecalled.fastq')
-            
-            with open(os.path.join(tmpdir, 'basecalled.fastq')) as basecalled:
-                lines = basecalled.readlines()
-                out_seq, qscores = lines[1].strip(), lines[3].strip()
-                return out_seq
+#        with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = 'reads_test'
+        print("Simulating sequencing...")
+        simulate_read(syn_data, tmpdir, 'read.fast5')
+ 
+        print("Simulating basecalling...")
+        simulate_basecalling(tmpdir, tmpdir, 'basecalled.fastq')
+        
+        with open(os.path.join(tmpdir, 'basecalled.fastq')) as basecalled:
+            lines = basecalled.readlines()
+            out_seq, qscores = lines[1].strip(), lines[3].strip()
+            return out_seq, parse_qscores(qscores)
 
 
 def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
@@ -175,4 +176,11 @@ def simulate_basecalling(reads_dir, out_dir, out_file='basecalled.fastq'):
     """
     out_path = os.path.join(out_dir, out_file)
     os.system("bonito basecaller --fastq dna_r9.4.1@v2 %s > %s" % (reads_dir, out_path))
+
+
+def parse_qscores(qscores):
+    """
+    Converts quality score character encoding into probability values
+    """
+    return [10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
 

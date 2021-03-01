@@ -27,7 +27,6 @@ This package is used to simulate simple synthesis and sequencing errors on a nuc
 Simulates synthesis errors using same method as before, but simulates generated signals from sequencing process using Scrappie for R9.4.1 pore & basecalls these using Bonito basecaller with CTC architecture. Could also compare if DeepSimulator gives more representative simulation.
 
 ## TODOs
-* Parse quality scores for second simulation mode into probabilities
 * Validate both types of error simulation with real data we have synthesised & sequenced
 * Update error rates for basic simulation based on real data
 * Option to save intermediate FAST5 & FASTQ files for second simulation mode
