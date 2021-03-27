@@ -36,10 +36,10 @@ def simulate_errors(seq, basic=True):
         tmpdir = 'reads_test'
         print("Simulating sequencing...")
         simulate_read(syn_data, tmpdir, 'read.fast5')
- 
+
         print("Simulating basecalling...")
         simulate_basecalling(tmpdir, tmpdir, 'basecalled.fastq')
-        
+
         with open(os.path.join(tmpdir, 'basecalled.fastq')) as basecalled:
             lines = basecalled.readlines()
             out_seq, qscores = lines[1].strip(), lines[3].strip()
@@ -182,5 +182,4 @@ def parse_qscores(qscores):
     """
     Converts quality score character encoding into probability values
     """
-    return [10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
-
+    return [1 - 10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
