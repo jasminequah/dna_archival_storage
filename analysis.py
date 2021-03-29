@@ -89,12 +89,14 @@ def count_errors(ref, alignment):
     # substitution errors not seen in CIGAR string.
     for read in samfile.fetch(until_eof=True):
         alignment_start = read.reference_start
-        alignment_end = read.reference_end
         ins = 0
         dels = alignment_start
         subs = 0
         read_pos = 0
         ref_pos = alignment_start
+
+        if read.cigartuples is None:
+            raise Exception("Could not produce alignment")
 
         for cigar_op, length in read.cigartuples:
             if cigar_op == 1:   # BAM_CINS (insertion)
@@ -115,7 +117,9 @@ def count_errors(ref, alignment):
                 read_pos += length
                 ref_pos += length
 
-        dels += len(reference) - ref_pos
+        # Insertions and deletions at end of sequence
+        dels += max(0, len(reference) - ref_pos)
+        ins  += max(0, ref_pos - len(reference))
 
         # md_tag = read.get_tag("MD")
         # subs += sum([1 for c in md_tag if c.isalpha()]) - dels
@@ -128,5 +132,5 @@ def count_errors(ref, alignment):
 
 
 def compute_subs(read_pos, ref_pos, length, ref, read):
-    subs = sum([1 for i in range(length) if ref[ref_pos + i] != read[read_pos + i]])
+    subs = sum([1 for i in range(length) if ref_pos + i < len(ref) and ref[ref_pos + i] != read[read_pos + i]])
     return subs
