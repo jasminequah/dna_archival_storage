@@ -1,6 +1,70 @@
 import pysam
 import os
 
+def get_error_summary(ref, read, is_seq=False):
+    """
+    Computes alignment between reference sequence and sequence provided. Assumes performing single
+    sequence alignment.
+    Parameters
+    ----------
+    ref : string
+        Reference sequence
+    read : string
+        Read sequence
+    is_seq : bool
+        If True, ref and read are interpreted as raw sequences. Otherwise, they are interpreted as
+        filenames for the reference and read sequence.
+    Returns
+    -------
+    (int, int, int, int):
+        Number of insertions, deletions, substitutions, and length of reference.
+    """
+    if is_seq:
+        # Create FASTA files for read and reference
+        tmpdir = tempfile.TemporaryDirectory()
+        with open(os.path.join(tmpdir, 'ref.fasta'), 'w') as ref_fasta:
+            ref_fasta.write('>%s\n%s\n' % ('seq', ref))
+        with open(os.path.join(tmpdir, 'read.fasta'), 'w') as read_fasta:
+            read_fasta.write('>%s\n%s\n' % ('seq', read))
+        ref = os.path.join(ref, 'ref.fasta')
+        read = os.path.join(ref, 'read.fasta')
+
+    alignment = align(ref, read)
+    error_summary = count_errors(ref, alignment)
+
+    if is_seq:
+        tmpdir.cleanup()
+
+    ins, dels, subs, ref_length = error_summary
+    print("Insertion errors %.3f%%, deletion errors %.3f%%, substitution errors %.3f%%, error rate %.3f%%"
+        % (ins / ref_length * 100, dels / ref_length * 100, subs / ref_length * 100, (ins + dels + subs) / ref_length * 100))
+
+    # TODO: BLAST identity
+    return error_summary
+
+
+def align(ref, read, alignment="alignment.sam"):
+    """
+    Performs sequence alignment between ref and read using bwa-mem2.
+    Parameters
+    ----------
+    ref : string
+        Reference sequence filename
+    read : string
+        Read sequence filename
+    alignment : string
+        Name of SAM file which will be output, containing the sequence alignment.
+    Returns
+    -------
+    string:
+        Name of SAM file output.
+    """
+    os.system("./bwa-mem2-2.1_x64-linux/bwa-mem2 index %s" % ref)
+    os.system("./bwa-mem2-2.1_x64-linux/bwa-mem2 mem %s %s > %s" % (ref, read, alignment))
+    # TODO: Add setup instructions for bwa-mem2 to readme
+    return alignment
+
+
 def count_errors(ref, alignment):
     """
     Computes alignment between reference sequence and sequence provided. Assumes performing single
