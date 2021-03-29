@@ -4,6 +4,7 @@ import scrappy
 import tempfile
 
 from error_simulation import modelling
+from analysis import get_error_summary
 
 from fast5_research import Fast5
 from uuid import uuid4
@@ -42,10 +43,8 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read'):
             tmpdir = tempfile.TemporaryDirectory()
             working_dir = tmpdir.name
 
-        if save_dir is not None:
-            # Write FASTA file
-            with open(os.path.join(working_dir, 'seq.fasta'), 'w') as fasta:
-                fasta.write('>%s\n%s\n' % (id, seq))
+        with open(os.path.join(working_dir, 'seq.fasta'), 'w') as fasta:
+            fasta.write('>%s\n%s\n' % (id, seq))
 
         print("Simulating sequencing...")
         simulate_read(syn_data, working_dir, 'read.fast5', id)
@@ -56,6 +55,9 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read'):
         with open(os.path.join(working_dir, 'basecalled.fastq')) as basecalled:
             lines = basecalled.readlines()
             out_seq, qscores = lines[1].strip(), lines[3].strip()
+
+        # Print insertion, deletion, substitution error statistics
+        error_summary = get_error_summary(os.path.join(working_dir, 'seq.fasta'), os.path.join(working_dir, 'basecalled.fastq'))
 
         if save_dir is None:
             tmpdir.cleanup()
@@ -82,9 +84,9 @@ def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
         List of nucleotide sequences with simulated synthesis errors
     """
     error_config = {
-      'sub_rate': sub_rate,
-      'ins_rate': ins_rate,
-      'del_rate': del_rate
+        'sub_rate': sub_rate,
+        'ins_rate': ins_rate,
+        'del_rate': del_rate
     }
 
     raw_data = modelling.decode_nucs(seq)
@@ -112,9 +114,9 @@ def simulate_sequencing(seq, sub_rate=0.15, ins_rate=0.05, del_rate=0.05):
         List of nucleotide sequences with simulated synthesis errors
     """
     error_config = {
-      'sub_rate': sub_rate,
-      'ins_rate': ins_rate,
-      'del_rate': del_rate
+        'sub_rate': sub_rate,
+        'ins_rate': ins_rate,
+        'del_rate': del_rate
     }
 
     raw_data = modelling.decode_nucs(seq)
