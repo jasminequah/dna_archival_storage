@@ -10,12 +10,6 @@ If running basic simulation (no basecalling), only standard libraries used.
 
 If running simulation with raw signal simulation using Scrappie & Bonito basecalling, run `./setup.sh` first. A GPU is required to run the Bonito basecaller.
 
-To run analysis, download precompiled binary for bwa-mem2:
-```
-cd dna_archival_storage
-curl -L https://github.com/bwa-mem2/bwa-mem2/releases/download/v2.2.1/bwa-mem2-2.2.1_x64-linux.tar.bz2 \
-  | tar jxf -
-```
 
 ## Usage
 Two modes of error simulation are currently available: one using given error rates and the `error_simulation` package (see below for more detail), and the other using Scrappie for signal generation and Bonito basecalling.
