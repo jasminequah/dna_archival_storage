@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import random
 import scrappy
 import tempfile
 
@@ -10,7 +11,7 @@ from fast5_research import Fast5
 from uuid import uuid4
 
 
-def simulate_errors(seq, basic=True, save_dir=None, id='test_read'):
+def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_summary=False):
     """
     Simulates errors occuring on given DNA sequence during the process of synthesis & sequencing.
     Parameters
@@ -27,8 +28,9 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read'):
         ID given to read
     Returns
     -------
-    string
-        DNA sequence containing simulated errors from synthesis and sequencing process.
+    string, [float], ?tuple
+        DNA sequence containing simulated errors from synthesis and sequencing process,
+        qscores associated with each, and error summary if print_error_summary is True.
     """
     print("Simulating synthesis errors...")
     syn_data = simulate_synthesis(seq)
@@ -57,11 +59,15 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read'):
             out_seq, qscores = lines[1].strip(), lines[3].strip()
 
         # Print insertion, deletion, substitution error statistics
-        error_summary = get_error_summary(os.path.join(working_dir, 'seq.fasta'), os.path.join(working_dir, 'basecalled.fastq'))
+        error_summary = None
+        if print_error_summary:
+            print(seq)
+            print(out_seq)
+            error_summary = get_error_summary(os.path.join(working_dir, 'seq.fasta'), os.path.join(working_dir, 'basecalled.fastq'))
 
         if save_dir is None:
             tmpdir.cleanup()
-        return out_seq, parse_qscores(qscores)
+        return out_seq, parse_qscores(qscores), error_summary
 
 
 def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
@@ -201,3 +207,25 @@ def parse_qscores(qscores):
     Converts quality score character encoding into probability values
     """
     return [1 - 10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
+
+
+def evaluate_simulator(seq_length=100, runs=20):
+    avg_ins = 0
+    avg_dels = 0
+    avg_subs = 0
+    for i in range(runs):
+        seq = create_random_seq(seq_length)
+        (_, _, error_summary) = simulate_errors(seq, False, print_error_summary=True)
+        (ins, dels, subs, _) = error_summary
+        avg_ins += ins
+        avg_dels += dels
+        avg_subs += subs
+    avg_ins /= runs
+    avg_dels /= runs
+    avg_subs /= runs
+    print("Average insertions %.3f%%, deletions %.3f%%, substitutions %.3f%%, errors %.3f%%"
+        % (avg_ins / seq_length * 100, avg_dels / seq_length * 100, avg_subs / seq_length * 100, (avg_ins + avg_dels + avg_subs) / seq_length * 100))
+
+
+def create_random_seq(seq_length):
+    return ''.join(random.choices(['A','C','G','T'], k=seq_length))
