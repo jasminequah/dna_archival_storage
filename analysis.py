@@ -16,8 +16,8 @@ def get_error_summary(ref, read, is_seq=False):
         filenames for the reference and read sequence.
     Returns
     -------
-    (ndarray(dtype=int), ndarray(dtype=int), ndarray(dtype=int)):
-        Positions of insertions, deletions, substitutions in sequence.
+    (ndarray(dtype=int), ndarray(dtype=int), ndarray(dtype=int), string, string):
+        Positions of insertions, deletions, substitutions in sequence and alignment of ref and read.
     """
     if not is_seq:
         # Read from files
@@ -28,7 +28,7 @@ def get_error_summary(ref, read, is_seq=False):
 
     error_summary = sm_align(ref, read)
 
-    _, _, _, ins_pos, dels_pos, subs_pos = error_summary
+    ref_align, read_align, _, ins_pos, dels_pos, subs_pos = error_summary
     ref_length = len(ref)
     ins_count = np.sum(ins_pos)
     dels_count = np.sum(dels_pos)
@@ -36,7 +36,7 @@ def get_error_summary(ref, read, is_seq=False):
     print("Insertion errors %.3f%%, deletion errors %.3f%%, substitution errors %.3f%%, error rate %.3f%%"
         % (ins_count / ref_length * 100, dels_count / ref_length * 100, subs_count / ref_length * 100, (ins_count + dels_count + subs_count) / ref_length * 100))
 
-    return ins_pos, dels_pos, subs_pos
+    return ins_pos, dels_pos, subs_pos, ref_align, read_align
 
 
 # get_similarity_score and sm_align adapted from

@@ -1,6 +1,7 @@
 from random import random, randint
 import math
 from collections import Counter, Iterable
+import numpy as np
 
 from error_simulation import data_config, insertion, substitution
 import time
@@ -327,6 +328,10 @@ def sequence(oligos, method):
   total_ins = 0
   total_del = 0
 
+  ins_pos = np.full(len(oligos), False)
+  dels_pos = np.full(len(oligos), False)
+  subs_pos = np.full(len(oligos), False)
+
   # Going through each oligo to synthesis
   for i, oligo in enumerate(oligos):
 
@@ -336,20 +341,23 @@ def sequence(oligos, method):
 
     new_oligo = []
 
-    for nuc in oligo:
+    for pos, nuc in enumerate(oligo):
 
       new_nuc = nuc
 
       if random() < sub_rate:
         new_nuc = substitution.getSubNucleotide(nuc, 'custom_sequencing')
         sub_counter += 1
+        subs_pos[pos] = True
 
       elif random() < ins_rate:
         new_oligo.append(insertion.getInsertedNucleotide(new_nuc, 'custom_sequencing')) # Adding new nucleotide.
         ins_counter += 1
+        ins_pos[pos] = True
 
       elif random() < del_rate:
         del_counter += 1
+        dels_pos[pos] = True
         # About to delete the nucleotide, so we can just ignore it and not add it to the new oligo
         continue
 
@@ -376,7 +384,7 @@ def sequence(oligos, method):
     print(f'Total ins events: {total_ins}. Proportion is: {total_ins / number_of_nuc}. Target is: {ins_rate}')
     print(f'Total del events: {total_del}. Proportion is: {total_del / number_of_nuc}. Target is: {del_rate}')
 
-  return seq_oligos
+  return seq_oligos, (ins_pos, dels_pos, subs_pos)
 
 
 def getOligoLengths(item):
@@ -463,8 +471,8 @@ def main():
   pcr_oligos = stg_oligos
 
   print("Sequencing stored oligos...")
-  #seq_oligos = sequence(pcr_oligos)
-  seq_oligos = sequence(stg_oligos, data_config.sequencing)
+  #seq_oligos, _ = sequence(pcr_oligos)
+  seq_oligos, _ = sequence(stg_oligos, data_config.sequencing)
 
   print("Finished")
 

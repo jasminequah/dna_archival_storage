@@ -12,7 +12,7 @@ from fast5_research import Fast5
 from uuid import uuid4
 
 
-def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_summary=False):
+def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_summary=False, error_rate=None):
     """
     Simulates errors occuring on given DNA sequence during the process of synthesis & sequencing.
     Parameters
@@ -29,6 +29,9 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_
         ID given to read
     print_error_summary : bool, optional
         If true and basic=False, prints error statistics of simulated sequence.
+    error_rate : float, optional
+        If set, either artifically increases or decreases the error rate towards the specified rate.
+        Must be in range [0,1].
     Returns
     -------
     string, [float], ?tuple
@@ -40,8 +43,8 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_
 
     if basic:
         print("Simulating sequencing errors...")
-        seq_data = simulate_sequencing(syn_data)
-        return ''.join(seq_data), [0.25] * len(seq_data)
+        seq_data, _ = simulate_sequencing(syn_data)
+        return ''.join(seq_data), [0.25] * len(seq_data), None
     else:
         working_dir = save_dir
         if working_dir is None:
@@ -61,8 +64,18 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_
             lines = basecalled.readlines()
             out_seq, qscores = lines[1].strip(), lines[3].strip()
 
-        # Print insertion, deletion, substitution error statistics
         error_summary = None
+        if error_rate is not None:
+            print("Before tuning error rate:")
+            error_summary = get_error_summary(os.path.join(working_dir, 'seq.fasta'), os.path.join(working_dir, 'basecalled.fastq'))
+            out_seq, qscores = alter_error_rate(seq, out_seq, qscores, error_summary, error_rate)
+            # Update fastq file
+            with open(os.path.join(working_dir, 'basecalled.fastq'), 'r') as fastq:
+                lines = fastq.readlines()
+            with open(os.path.join(working_dir, 'basecalled.fastq'), 'w') as fastq:
+                fastq.write('%s%s\n%s%s\n' % (lines[0], out_seq, lines[2], qscores))
+
+        # Print insertion, deletion, substitution error statistics
         if print_error_summary:
             print(seq)
             print(out_seq)
@@ -119,8 +132,9 @@ def simulate_sequencing(seq, sub_rate=0.15, ins_rate=0.05, del_rate=0.05):
         Deletion error rate for sequencing
     Returns
     -------
-    string
-        List of nucleotide sequences with simulated synthesis errors
+    string, (ndarray(dtype=bool), ndarray(dtype=bool), ndarray(dtype=bool))
+        List of nucleotide sequences with simulated sequencing errors and tuple showing positions in
+        original sequence where insertions, deletions, and substitutions occur.
     """
     error_config = {
         'sub_rate': sub_rate,
@@ -129,8 +143,8 @@ def simulate_sequencing(seq, sub_rate=0.15, ins_rate=0.05, del_rate=0.05):
     }
 
     raw_data = modelling.decode_nucs(seq)
-    seq_oligos = modelling.sequence(raw_data, error_config)
-    return ''.join(modelling.encode_nucs(seq_oligos))
+    seq_oligos, errors_pos = modelling.sequence(raw_data, error_config)
+    return ''.join(modelling.encode_nucs(seq_oligos)), errors_pos
 
 
 def simulate_read(seq, out_dir, filename, id):
@@ -220,7 +234,7 @@ def evaluate_simulator(seq_length=100, runs=20):
     for i in range(runs):
         seq = create_random_seq(seq_length)
         (read, _, error_summary) = simulate_errors(seq, False, print_error_summary=True)
-        (ins, dels, subs) = error_summary
+        (ins, dels, subs, _, _) = error_summary
         np.add(ins_pos, ins, out=ins_pos)
         np.add(dels_pos, dels, out=dels_pos)
         np.add(subs_pos, subs, out=subs_pos)
@@ -255,5 +269,63 @@ def evaluate_simulator(seq_length=100, runs=20):
     plt.axvline(x=seq_length, label="Reference length")
     plt.savefig("read_len_distribution.png")
 
+
 def create_random_seq(seq_length):
     return ''.join(random.choices(['A','C','G','T'], k=seq_length))
+
+
+def alter_error_rate(ref, seq, qscores, error_summary, desired_error_rate):
+    ins_pos, dels_pos, subs_pos, ref_align, read_align = error_summary
+    curr_error_rate = (np.sum(ins_pos) + np.sum(dels_pos) + np.sum(subs_pos)) / len(ref)
+
+    if curr_error_rate > desired_error_rate:
+        # Correct a proportion of errors in sequence
+        # Each error is corrected with probability (curr_error_rate - desired_error_rate) / curr_error_rate
+        correction_prob = (curr_error_rate - desired_error_rate) / curr_error_rate
+        align_len = len(ref_align)
+        seq_pos = 0
+        new_seq = []
+        new_qscores = []
+        for align_pos in range(align_len):
+            if ref_align[align_pos] != read_align[align_pos] and random.random() < correction_prob:
+                # Correct error at alignment position
+                if ref_align[align_pos] == '-':
+                    # Insertion
+                    seq_pos += 1
+                    continue
+                if read_align[align_pos] == '-':
+                    # Deletion
+                    new_seq.append(ref_align[align_pos])
+                    new_qscores.append('=') # TODO: pick qscore for correcting deletion
+                    continue
+                else:
+                    # Substitution
+                    new_seq.append(ref_align[align_pos])
+                    new_qscores.append(qscores[seq_pos]) # TODO: pick qscore for corrected base
+                    seq_pos += 1
+                    continue
+            if read_align[align_pos] != '-':
+                new_seq.append(seq[seq_pos])
+                new_qscores.append(qscores[seq_pos])
+                seq_pos += 1
+        return ''.join(new_seq), ''.join(new_qscores)
+    else:
+        # Introduce errors with probability desired_error_rate - curr_error_rate. Assumes errors
+        # uniformly distributed throughout sequence - could be improved in future versions.
+        subs_rate = (np.sum(subs_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
+        ins_rate = (np.sum(ins_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
+        dels_rate = (np.sum(dels_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
+        new_seq, errors_pos = simulate_sequencing(seq, subs_rate, ins_rate, dels_rate)
+
+        # Updating qscores
+        ins_pos_new, dels_pos_new, subs_pos_new = errors_pos
+        new_qscores = []
+        for pos in range(len(seq)):
+            if ins_pos_new[pos]:
+                new_qscores.append('=') # TODO: pick qscore for correcting deletion
+            elif dels_pos_new[pos]:
+                continue
+            else:
+                new_qscores.append(qscores[pos]) # TODO: assumes same qscore for substitution
+
+        return new_seq, ''.join(new_qscores)
