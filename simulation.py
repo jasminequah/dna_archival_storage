@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import random
+import re
 import scrappy
 import tempfile
 
@@ -12,13 +13,13 @@ from fast5_research import Fast5
 from uuid import uuid4
 
 
-def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_summary=False, error_rate=None):
+def simulate_errors(seqs, basic=True, save_dir=None, id='test_read', print_error_summary=False, error_rate=None):
     """
     Simulates errors occuring on given DNA sequence during the process of synthesis & sequencing.
     Parameters
     ----------
-    seq : string
-        DNA sequence errors will be simulated on
+    seqs : string or [string]
+        DNA sequence(s) errors will be simulated on
     basic : bool, optional
         Determines whether to use simple simulation using predefined error rates (no quality scores),
         or a more advanced model which simulates signal generation and basecalling.
@@ -34,56 +35,81 @@ def simulate_errors(seq, basic=True, save_dir=None, id='test_read', print_error_
         Must be in range [0,1].
     Returns
     -------
-    string, [float], ?tuple
-        DNA sequence containing simulated errors from synthesis and sequencing process,
+    [string], [[float]], [?tuple]
+        DNA sequence(s) containing simulated errors from synthesis and sequencing process,
         qscores associated with each, and error summary if print_error_summary is True.
     """
-    print("Simulating synthesis errors...")
-    syn_data = simulate_synthesis(seq)
+    if not isinstance(seqs, list):
+        seqs = [seqs]
+
+    out_seqs = []
+    out_qscores = []
+    error_summaries = [None] * len(seqs)
+    working_dir = save_dir
+    tmpdir = None
+
+    print("Simulating synthesis & sequencing...")
+    for i, seq in enumerate(seqs):
+        syn_data = simulate_synthesis(seq)
+
+        if basic:
+            seq_data, _ = simulate_sequencing(syn_data)
+            out_seqs.append(''.join(seq_data))
+            out_qscores.append([0.25] * len(seq_data))
+        else:
+            if working_dir is None:
+                tmpdir = tempfile.TemporaryDirectory()
+                working_dir = tmpdir.name
+
+            with open(os.path.join(working_dir, 'seq_%s.fasta' % i), 'w') as fasta:
+                fasta.write('>%s\n%s\n' % ("%s_%s" % (id, i), seq))
+
+            simulate_read(syn_data, working_dir, 'read_%s.fast5' % i, "%s_%s" % (id, i))
 
     if basic:
-        print("Simulating sequencing errors...")
-        seq_data, _ = simulate_sequencing(syn_data)
-        return ''.join(seq_data), [0.25] * len(seq_data), None
-    else:
-        working_dir = save_dir
-        if working_dir is None:
-            tmpdir = tempfile.TemporaryDirectory()
-            working_dir = tmpdir.name
+        return out_seqs, out_qscores, error_summaries
 
-        with open(os.path.join(working_dir, 'seq.fasta'), 'w') as fasta:
-            fasta.write('>%s\n%s\n' % (id, seq))
+    print("Simulating basecalling...")
+    simulate_basecalling(working_dir, working_dir, 'basecalled.fastq')
 
-        print("Simulating sequencing...")
-        simulate_read(syn_data, working_dir, 'read.fast5', id)
+    out_seqs = [None] * len(seqs)
+    out_qscores = [None] * len(seqs)
+    with open(os.path.join(working_dir, 'basecalled.fastq')) as basecalled:
+        line = basecalled.readline()
+        while line:
+            read_index = int(re.match('^.*_([0-9]+)$', line.strip()).group(1))
+            out_seqs[read_index] = basecalled.readline().strip()
+            basecalled.readline()
+            out_qscores[read_index] = basecalled.readline().strip()
+            line = basecalled.readline()
 
-        print("Simulating basecalling...")
-        simulate_basecalling(working_dir, working_dir, 'basecalled.fastq')
-
-        with open(os.path.join(working_dir, 'basecalled.fastq')) as basecalled:
-            lines = basecalled.readlines()
-            out_seq, qscores = lines[1].strip(), lines[3].strip()
-
-        error_summary = None
+    for i, seq in enumerate(seqs):
         if error_rate is not None:
-            print("Before tuning error rate:")
-            error_summary = get_error_summary(os.path.join(working_dir, 'seq.fasta'), os.path.join(working_dir, 'basecalled.fastq'))
-            out_seq, qscores = alter_error_rate(seq, out_seq, qscores, error_summary, error_rate)
-            # Update fastq file
-            with open(os.path.join(working_dir, 'basecalled.fastq'), 'r') as fastq:
-                lines = fastq.readlines()
-            with open(os.path.join(working_dir, 'basecalled.fastq'), 'w') as fastq:
-                fastq.write('%s%s\n%s%s\n' % (lines[0], out_seq, lines[2], qscores))
+            out_seq, qscores = alter_error_rate(seq, out_seqs[i], out_qscores[i], error_rate)
+            out_seqs[i] = out_seq
+            out_qscores[i] = qscores
 
         # Print insertion, deletion, substitution error statistics
         if print_error_summary:
             print(seq)
-            print(out_seq)
-            error_summary = get_error_summary(os.path.join(working_dir, 'seq.fasta'), os.path.join(working_dir, 'basecalled.fastq'))
+            print(out_seqs[i])
+            error_summary = get_error_summary(seq, out_seqs[i], True)
+            error_summaries[i] = error_summary
 
-        if save_dir is None:
-            tmpdir.cleanup()
-        return out_seq, parse_qscores(qscores), error_summary
+    if error_rate is not None:
+        # Update fastq file
+        with open(os.path.join(working_dir, 'basecalled.fastq'), 'r') as fastq:
+            lines = fastq.readlines()
+        with open(os.path.join(working_dir, 'basecalled.fastq'), 'w') as fastq:
+            for i, seq in enumerate(seqs):
+                lines[i * 4 + 1] = out_seqs[i]
+                lines[i * 4 + 3] = out_qscores[i]
+            fastq.writelines(lines)
+
+    if save_dir is None:
+        tmpdir.cleanup()
+
+    return out_seqs, [parse_qscores(qscores) for qscores in out_qscores], error_summaries
 
 
 def simulate_synthesis(seq, sub_rate=0.001, ins_rate=0.0015, del_rate=0.0055):
@@ -216,7 +242,7 @@ def simulate_basecalling(reads_dir, out_dir, out_file='basecalled.fastq'):
         File to write basecalled results to.
     """
     out_path = os.path.join(out_dir, out_file)
-    os.system("bonito basecaller --fastq dna_r9.4.1@v2 %s > %s" % (reads_dir, out_path))
+    os.system("bonito basecaller --fastq --weights 1 dna_r9.4.1@v3.2 %s > %s" % (reads_dir, out_path))
 
 
 def parse_qscores(qscores):
@@ -230,15 +256,17 @@ def evaluate_simulator(seq_length=100, runs=20):
     ins_pos = np.zeros(seq_length)
     dels_pos = np.zeros(seq_length)
     subs_pos = np.zeros(seq_length)
-    read_lengths = np.zeros(runs)
-    for i in range(runs):
-        seq = create_random_seq(seq_length)
-        (read, _, error_summary) = simulate_errors(seq, False, print_error_summary=True)
-        (ins, dels, subs, _, _) = error_summary
+
+    seqs = [create_random_seq(seq_length) for i in range(runs)]
+    reads, _, error_summaries = simulate_errors(seqs, False, print_error_summary=True)
+    read_lengths = [len(read) for read in reads]
+
+    for i, error_summary in enumerate(error_summaries):
+        (ins, dels, subs, ref_align, read_align) = error_summary
         np.add(ins_pos, ins, out=ins_pos)
         np.add(dels_pos, dels, out=dels_pos)
         np.add(subs_pos, subs, out=subs_pos)
-        read_lengths[i] = len(read)
+
     ins_rate = np.sum(ins_pos) / runs / seq_length * 100
     dels_rate = np.sum(dels_pos) / runs / seq_length * 100
     subs_rate = np.sum(subs_pos) / runs / seq_length * 100
@@ -274,7 +302,9 @@ def create_random_seq(seq_length):
     return ''.join(random.choices(['A','C','G','T'], k=seq_length))
 
 
-def alter_error_rate(ref, seq, qscores, error_summary, desired_error_rate):
+def alter_error_rate(ref, seq, qscores, desired_error_rate):
+    print("Before tuning error rate:")
+    error_summary = get_error_summary(ref, seq, True)
     ins_pos, dels_pos, subs_pos, ref_align, read_align = error_summary
     curr_error_rate = (np.sum(ins_pos) + np.sum(dels_pos) + np.sum(subs_pos)) / len(ref)
 
@@ -322,7 +352,7 @@ def alter_error_rate(ref, seq, qscores, error_summary, desired_error_rate):
         new_qscores = []
         for pos in range(len(seq)):
             if ins_pos_new[pos]:
-                new_qscores.append('=') # TODO: pick qscore for correcting deletion
+                new_qscores.append('=') # TODO: pick qscore for introducing insertion
             elif dels_pos_new[pos]:
                 continue
             else:
