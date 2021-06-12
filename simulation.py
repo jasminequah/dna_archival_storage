@@ -92,7 +92,7 @@ def simulate_errors(seqs, basic=True, save_dir=None, id='test_read', print_error
             out_qscores[i] = qscores
 
         if error_rate is not None:
-            out_seq, qscores = alter_error_rate(seq, out_seqs[i], out_qscores[i], error_rate)
+            out_seq, qscores = alter_error_rate(seq, out_seqs[i], out_qscores[i], error_rate, no_indels)
             out_seqs[i] = out_seq
             out_qscores[i] = qscores
 
@@ -335,7 +335,7 @@ def fix_indels(ref, seq, qscores=None):
     return ''.join(new_seq), new_qscores
 
 
-def alter_error_rate(ref, seq, qscores, desired_error_rate):
+def alter_error_rate(ref, seq, qscores, desired_error_rate, no_indels=False):
     print("Before tuning error rate:")
     error_summary = get_error_summary(ref, seq, True)
     ins_pos, dels_pos, subs_pos, ref_align, read_align = error_summary
@@ -350,18 +350,22 @@ def alter_error_rate(ref, seq, qscores, desired_error_rate):
         new_seq = []
         new_qscores = []
         for align_pos in range(align_len):
-            if ref_align[align_pos] != read_align[align_pos] and random.random() < correction_prob:
-                # Correct error at alignment position
-                if ref_align[align_pos] == '-':
+            # Correct error at alignment position
+            if ref_align[align_pos] == '-':
+                if random.random() < correction_prob:
                     # Insertion
-                    seq_pos += 1
-                    continue
-                if read_align[align_pos] == '-':
+                    if not no_indels:
+                        seq_pos += 1
+                        continue
+            elif read_align[align_pos] == '-':
+                if random.random() < correction_prob:
                     # Deletion
-                    new_seq.append(ref_align[align_pos])
-                    new_qscores.append('=') # TODO: pick qscore for correcting deletion
-                    continue
-                else:
+                    if not no_indels:
+                        new_seq.append(ref_align[align_pos])
+                        new_qscores.append('=') # TODO: pick qscore for correcting deletion
+                        continue
+            elif ref_align[align_pos] != read_align[align_pos]:
+                if random.random() < correction_prob:
                     # Substitution
                     new_seq.append(ref_align[align_pos])
                     new_qscores.append(qscores[seq_pos]) # TODO: pick qscore for corrected base
@@ -375,9 +379,14 @@ def alter_error_rate(ref, seq, qscores, desired_error_rate):
     else:
         # Introduce errors with probability desired_error_rate - curr_error_rate. Assumes errors
         # uniformly distributed throughout sequence - could be improved in future versions.
-        subs_rate = (np.sum(subs_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
-        ins_rate = (np.sum(ins_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
-        dels_rate = (np.sum(dels_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
+        if no_indels:
+            subs_rate = desired_error_rate - curr_error_rate
+            ins_rate = 0.
+            dels_rate = 0.
+        else:
+            subs_rate = (np.sum(subs_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
+            ins_rate = (np.sum(ins_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
+            dels_rate = (np.sum(dels_pos) / len(ref) / curr_error_rate) * (desired_error_rate - curr_error_rate)
         new_seq, errors_pos = simulate_sequencing(seq, subs_rate, ins_rate, dels_rate)
 
         # Updating qscores
