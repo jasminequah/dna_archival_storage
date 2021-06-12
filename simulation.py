@@ -259,7 +259,7 @@ def parse_qscores(qscores):
     return [1 - 10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
 
 
-def evaluate_simulator(seq_length=100, runs=20):
+def evaluate_simulator(seq_length=100, runs=20, outdir=''):
     ins_pos = np.zeros(seq_length)
     dels_pos = np.zeros(seq_length)
     subs_pos = np.zeros(seq_length)
@@ -273,6 +273,17 @@ def evaluate_simulator(seq_length=100, runs=20):
         np.add(ins_pos, ins, out=ins_pos)
         np.add(dels_pos, dels, out=dels_pos)
         np.add(subs_pos, subs, out=subs_pos)
+
+        with open(os.path.join(outdir, 'simulated_seqs_debug.txt'), 'a+') as simulated_seqs:
+            simulated_seqs.write(">simulated_seq_%s\n%s\n%s\n" % (i, seqs[i], reads[i]))
+        with open(os.path.join(outdir, 'simulated_seqs_debug_align.txt'), 'a+') as simulated_seqs:
+            ref_length = seq_length
+            ins_count = np.sum(ins)
+            dels_count = np.sum(dels)
+            subs_count = np.sum(subs)
+            error_txt = "Insertion errors %.3f%%, deletion errors %.3f%%, substitution errors %.3f%%, error rate %.3f%%" \
+                % (ins_count / ref_length * 100, dels_count / ref_length * 100, subs_count / ref_length * 100, (ins_count + dels_count + subs_count) / ref_length * 100)
+            simulated_seqs.write(">simulated_seq_%s\n%s\n%s\n%s\n" % (i, ref_align, read_align, error_txt))
 
     ins_rate = np.sum(ins_pos) / runs / seq_length * 100
     dels_rate = np.sum(dels_pos) / runs / seq_length * 100
@@ -289,20 +300,22 @@ def evaluate_simulator(seq_length=100, runs=20):
     plt.xlabel('DNA Sequence Position')
     plt.ylabel('Total Error Count')
     plt.legend()
-    plt.savefig("error_distribution.png")
+    plt.savefig(os.path.join(outdir, "simulated_error_distribution.png"))
 
     # Write statistics
-    with open('avg_error_summary.txt', 'w') as fasta:
+    with open(os.path.join(outdir, 'simulated_avg_error_summary.txt'), 'w') as fasta:
         fasta.write("Insertions(%%):\t\t%.3f\nDeletions(%%):\t\t\t%.3f\nSubstitutions(%%):\t%.3f\nErrors(%%):\t\t\t\t%.3f\n"
             % (ins_rate, dels_rate, subs_rate, (ins_rate + dels_rate + subs_rate)))
 
     # Plot distribution of read lengths
     plt.figure()
     x, y = np.unique(read_lengths, return_counts=True)
-    plt.title("Read length distribution")
+    plt.title("Read Length Distribution")
     plt.scatter(x, y)
+    plt.xlabel('Read Length')
+    plt.ylabel('Frequency')
     plt.axvline(x=seq_length, label="Reference length")
-    plt.savefig("read_len_distribution.png")
+    plt.savefig(os.path.join(outdir, "simulated_read_len_distribution.png"))
 
 
 def create_random_seq(seq_length):
