@@ -259,6 +259,26 @@ def parse_qscores(qscores):
     return [1 - 10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
 
 
+def investigate_len_vs_errors(outdir='', runs=20):
+    x = range(150, 1000, 50)
+    y = np.zeros(len(x))
+    for i, seq_length in enumerate(x):
+        errs = []
+        seqs = [create_random_seq(seq_length) for i in range(runs)]
+        reads, _, error_summaries = simulate_errors(seqs, False, print_error_summary=True)
+        for error_summary in error_summaries:
+            (ins, dels, subs, ref_align, read_align) = error_summary
+            errs.append((np.sum(ins) + np.sum(dels) + np.sum(subs)) / seq_length * 100)
+        y[i] = np.mean(errs)
+
+    plt.figure()
+    plt.title("Sequence Length vs Error Rate")
+    plt.plot(x, y)
+    plt.xlabel('Sequence Length (nt)')
+    plt.ylabel('Error Rate (%)')
+    plt.savefig(os.path.join(outdir, "simulated_len_vs_errors.png"))
+
+
 def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_indels=False):
     ins_pos = np.zeros(seq_length)
     dels_pos = np.zeros(seq_length)
