@@ -259,13 +259,13 @@ def parse_qscores(qscores):
     return [1 - 10 ** (-(ord(qscore) - 33)/10) for qscore in qscores]
 
 
-def evaluate_simulator(seq_length=100, runs=20, outdir=''):
+def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_indels=False):
     ins_pos = np.zeros(seq_length)
     dels_pos = np.zeros(seq_length)
     subs_pos = np.zeros(seq_length)
 
     seqs = [create_random_seq(seq_length) for i in range(runs)]
-    reads, _, error_summaries = simulate_errors(seqs, False, print_error_summary=True)
+    reads, _, error_summaries = simulate_errors(seqs, False, print_error_summary=True, error_rate=error_rate, no_indels=no_indels)
     read_lengths = [len(read) for read in reads]
 
     for i, error_summary in enumerate(error_summaries):
