@@ -276,7 +276,7 @@ def investigate_len_vs_errors(outdir='', runs=20):
     plt.plot(x, y)
     plt.xlabel('Sequence Length (nt)')
     plt.ylabel('Error Rate (%)')
-    plt.savefig(os.path.join(outdir, "simulated_len_vs_errors.png"))
+    plt.savefig(os.path.join(outdir, "simulated_len_vs_errors.png"), dpi=800)
 
 
 def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_indels=False):
@@ -320,7 +320,7 @@ def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_i
     plt.xlabel('DNA Sequence Position')
     plt.ylabel('Total Error Count')
     plt.legend()
-    plt.savefig(os.path.join(outdir, "simulated_error_distribution.png"))
+    plt.savefig(os.path.join(outdir, "simulated_error_distribution.png"), dpi=800)
 
     # Write statistics
     with open(os.path.join(outdir, 'simulated_avg_error_summary.txt'), 'w') as fasta:
@@ -335,7 +335,7 @@ def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_i
     plt.xlabel('Read Length')
     plt.ylabel('Frequency')
     plt.axvline(x=seq_length, label="Reference length")
-    plt.savefig(os.path.join(outdir, "simulated_read_len_distribution.png"))
+    plt.savefig(os.path.join(outdir, "simulated_read_len_distribution.png"), dpi=800)
 
 
 def create_random_seq(seq_length):

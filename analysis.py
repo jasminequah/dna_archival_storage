@@ -186,7 +186,7 @@ def get_errors_from_file(filename, outdir='', limit=200):
     plt.xlabel('DNA Sequence Relative Position')
     plt.ylabel('Total Error Count')
     plt.legend()
-    plt.savefig(os.path.join(outdir, "error_distribution.png"))
+    plt.savefig(os.path.join(outdir, "error_distribution.png"), dpi=800)
 
     # Write statistics
     with open(os.path.join(outdir, 'avg_error_summary.txt'), 'w') as fasta:
@@ -201,7 +201,7 @@ def get_errors_from_file(filename, outdir='', limit=200):
     plt.xlabel('Sequence Length (nt)')
     plt.ylim(0,10)
     plt.ylabel('Error Rate (%)')
-    plt.savefig(os.path.join(outdir, "len_vs_errors.png"))
+    plt.savefig(os.path.join(outdir, "len_vs_errors.png"), dpi=800)
 
     # Plot distribution of read lengths
     plt.figure()
@@ -213,7 +213,7 @@ def get_errors_from_file(filename, outdir='', limit=200):
     plt.ylabel('Frequency')
     plt.xlabel('Relative Read Length')
     plt.axvline(x=1, label="Reference Length")
-    plt.savefig(os.path.join(outdir, "read_len_distribution.png"))
+    plt.savefig(os.path.join(outdir, "read_len_distribution.png"), dpi=800)
 
 
 def bucket_frequencies(x, y, lo, hi, interval):
