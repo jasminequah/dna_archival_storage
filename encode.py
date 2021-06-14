@@ -235,3 +235,57 @@ def test_ecc(data='half_ecc_test_300_more_data/data.txt', rate='1/3', error_rate
 
     # Last seq is ignored as has larger number of errors if small sequence
     print("AVGS: Ins: %s, dels: %s, subs: %s, err: %s" % (np.mean(ins_rates[:-1]), np.mean(del_rates[:-1]), np.mean(sub_rates[:-1]), np.mean(err_rates[:-1])))
+
+
+def test_no_ecc(data='no_ecc_test_150_more_data/data.txt', short_oligos=False):
+    filename_root = os.path.splitext(data)[0]
+    print(data)
+
+    binfile = filename_root+'_bin.txt'
+    print("Converting to binary...")
+    bin_max_len = 300 if short_oligos else 600
+    bin_seqs = ascii_to_binary(data, binfile, max_len=bin_max_len)
+    print("Conversion to binary complete.")
+
+    encoded_dna = binary_to_nt(b=binfile, output=filename_root+'_dna.txt') # For analysis later
+
+    print("Simulating errors...")
+    read_dna = simulate_errors(encoded_dna, basic=False, no_indels=True)[0]
+    read_filename = filename_root+'_read_dna.txt'
+    with open(read_filename, 'w') as read:
+        for seq in read_dna:
+            read.write("%s\n" % seq)
+
+    print("Error simulation complete.")
+    read_bin_file = filename_root+'_read_bin.txt'
+    nt_to_binary(nt=read_filename, output=read_bin_file)
+
+    binary_to_ascii(b=read_bin_file, output=filename_root+'_read.txt')
+
+    # Analysis
+    ins_rates = []
+    del_rates = []
+    sub_rates = []
+    err_rates = []
+
+    orig = open(filename_root+'_dna.txt')
+    read = open(read_filename)
+
+    orig_seq = orig.readline()
+    while orig_seq:
+        orig_seq = orig_seq.strip()
+        read_seq = read.readline().strip()
+        print(orig_seq)
+        print(read_seq)
+        ins, dels, subs, errs = get_errors(orig_seq, read_seq, True)
+        ins_rates.append(ins)
+        del_rates.append(dels)
+        sub_rates.append(subs)
+        err_rates.append(errs)
+        orig_seq = orig.readline()
+
+    orig.close()
+    read.close()
+
+    # Last seq is ignored as has larger number of errors if small sequence
+    print("AVGS: Ins: %s, dels: %s, subs: %s, err: %s" % (np.mean(ins_rates[:-1]), np.mean(del_rates[:-1]), np.mean(sub_rates[:-1]), np.mean(err_rates[:-1])))
