@@ -40,6 +40,18 @@ def get_error_summary(ref, read, is_seq=False):
     return ins_pos, dels_pos, subs_pos, ref_align, read_align
 
 
+def get_errors(ref, read, is_seq=False):
+    if len(read) == 0:
+        print("LOST SEQUENCE: ignoring errors")
+        return 0, 0, 0, 0
+    ins_pos, dels_pos, subs_pos, ref_align, read_align = get_error_summary(ref, read, is_seq)
+    ref_length = len(ref)
+    ins_count = np.sum(ins_pos)
+    dels_count = np.sum(dels_pos)
+    subs_count = np.sum(subs_pos)
+    return ins_count / ref_length * 100, dels_count / ref_length * 100, subs_count / ref_length * 100, (ins_count + dels_count + subs_count) / ref_length * 100
+
+
 # get_similarity_score and sm_align adapted from
 # https://github.com/JiaShun-Xiao/BLAST-bioinfor-tool/blob/master/blast.py
 # TODO: refactor
