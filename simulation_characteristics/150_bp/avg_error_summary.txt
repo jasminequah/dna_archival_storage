@@ -1,4 +1,0 @@
-Insertions(%):		0.680
-Deletions(%):			3.360
-Substitutions(%):	2.507
-Errors(%):				6.547
