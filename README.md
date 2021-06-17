@@ -76,9 +76,9 @@ Here, if your model weights are saved as `weights_3_1.tar`, set `<MODEL_WEIGHTS_
 
 To evaluate model accuracy, use the following command:
 ```
-bonito evaluate <MODEL_DIR> --weights <MODEL_WEIGHTS_SUFFIX> --directory bonito/bonito/models/na_r9.4.1 --batchsize 32
+bonito evaluate <MODEL_DIR> --weights <MODEL_WEIGHTS_SUFFIX> --chunks 0 --directory bonito/bonito/models/na_r9.4.1 --batchsize 32
 ```
-If you find you are running out of memory during execution of the above command, try reducing batch size.
+If you find you are running out of memory during execution of the above command, try reducing batch size or using `--chunks 1000` to reduce the amount of data used for evaluation.
 
 
 ### Error correcting code experiments:
