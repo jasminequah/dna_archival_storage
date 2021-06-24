@@ -1,6 +1,9 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import re
+import parasail
+from bonito.util import parasail_to_sam
 
 def get_error_summary(ref, read, is_seq=False):
     """
@@ -68,6 +71,19 @@ def get_errors(ref, read, is_seq=False):
     return ins_count / ref_length * 100, dels_count / ref_length * 100, subs_count / ref_length * 100, (ins_count + dels_count + subs_count) / ref_length * 100
 
 
+def parasail_align(ref='ATTCAAGTTTCCGACCGCGC', read='CTCGTGTTCCGATCGC', is_seq=True):
+    """
+        TODO: switch to parasail alignment - much faster using vectorised operations.
+        This is just some WIP code showing how to get the alignment and CIGAR string from the alignment of read and ref,
+        but the output of this function needs to be computed to output the same as sm_align().
+    """
+    alignment = parasail.sw_trace_striped_32(read, ref, 8, 4, parasail.dnafull)
+    rstart, cigar = parasail_to_sam(alignment, read)
+    print(rstart)
+    print(cigar)
+    # TODO ending
+
+
 # get_similarity_score and sm_align adapted from
 # https://github.com/JiaShun-Xiao/BLAST-bioinfor-tool/blob/master/blast.py
 # TODO: refactor
@@ -87,6 +103,12 @@ def sm_align(seq1, seq2, gap_penalty=3):
         (string, string, float, [int], [int], [int]):
             Tuple containing the produced alignment of seq1 and seq2 as strings, the alignment score computed,
             and the number of insertion, deletion and substitution errors taking place at each position of seq1.
+
+        TODO: Bug when aligning the following two sequences:
+        -------
+        GTTTGGACAATCTCGGCGTGTTCTATTCTCTGGCCCGAATCGAGTCTGCCTACTACCTCTCGGCTCCTTTGCATACCTCAGAGAACGACCCCTATCCCTG
+        C
+        Insertion errors 0.000%, deletion errors 0.000%, substitution errors 0.000%, error rate 0.000%
     """
     m = len(seq1)
     n = len(seq2)

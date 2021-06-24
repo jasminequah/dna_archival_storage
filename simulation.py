@@ -370,9 +370,11 @@ def create_random_seq(seq_length):
     return ''.join(random.choices(['A','C','G','T'], k=seq_length))
 
 
-def fix_indels(ref, seq, qscores=None):
+def fix_indels(ref, seq, qscores=None, fix_until_pos=None):
     """
         Fixes insertion and deletion errors in simulated sequence, given reference.
+        If fix_until_pos is set, fixes indel errors until the position specified.
+        This may be helpful for testing our Viterbi decoder's ability to detect insertion/deletions.
     """
     print("Before fixing indels:")
     error_summary = get_error_summary(ref, seq, True)
@@ -395,6 +397,14 @@ def fix_indels(ref, seq, qscores=None):
             if new_qscores is not None:
                 new_qscores.append(qscores[seq_pos])
             seq_pos += 1
+        if fix_until_pos is not None and seq_pos > fix_until_pos:
+            # Append rest of read before breaking
+            while seq_pos < len(seq):
+                new_seq.append(seq[seq_pos])
+                if new_qscores is not None:
+                    new_qscores.append(qscores[seq_pos])
+                seq_pos += 1
+            break
     new_qscores = ''.join(new_qscores) if qscores is not None else None
     return ''.join(new_seq), new_qscores
 
