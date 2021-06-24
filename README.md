@@ -80,6 +80,8 @@ bonito evaluate <MODEL_DIR> --weights <MODEL_WEIGHTS_SUFFIX> --chunks 0 --direct
 ```
 If you find you are running out of memory during execution of the above command, try reducing batch size or using `--chunks 1000` to reduce the amount of data used for evaluation.
 
+A handful of our pruned models can be found on the `models` branch of our bonito fork [here](https://github.com/jasminequah/bonito/tree/models/bonito/models/pruned_models).
+
 
 ### Error correcting code experiments:
 Encoding data with error correcting codes:
@@ -100,3 +102,9 @@ Run the following script:
 python3 sparse_experiments.py
 ```
 This generates and saves a figure showing the relationship between sparsity of a sparse tensor in Pytorch and the latency taken for sparse-dense matrix multiplication with that sparse tensor on both CPU and GPU (if available).
+
+## TODOs:
+* Implementation of Smith Waterman alignment has bug when aligning read sequence consisting of one base, eg: `GTTTGGACAATCTCGGCGTGTTCTATTCTCTGGCCCGAATCGAGTCTGCCTACTACCTCTCGGCTCCTTTGCATACCTCAGAGAACGACCCCTATCCCTG` and `C`.
+* Rather than using our implementation of Smith Waterman alignment, switch to using version implemented by parasail library. This performs alignment much faster by using vectorised operations.
+
+Also see [WIP branch](https://github.com/jasminequah/dna_archival_storage/tree/wip) for some WIP code which may be useful.
