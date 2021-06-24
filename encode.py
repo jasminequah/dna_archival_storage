@@ -340,3 +340,24 @@ def test_no_ecc(data='no_ecc_test_150_more_data/data.txt', short_oligos=False):
 
     # Last seq is ignored as has larger number of errors if small sequence
     print("AVGS: Ins: %s, dels: %s, subs: %s, err: %s" % (np.mean(ins_rates[:-1]), np.mean(del_rates[:-1]), np.mean(sub_rates[:-1]), np.mean(err_rates[:-1])))
+
+
+def pad_to_symbol_length(bin, symbol_size):
+    for i in range(symbol_size - (len(bin) % symbol_size)):
+        bin.append(0)
+    return bin
+
+
+def get_indel_pos_relative_to_read(ref_align, read_align, read_len):
+    indel_pos = np.zeros(read_len)
+    read_pos = 0
+
+    for i in range(len(ref_align)):
+        if ref_align[i] == '-':
+            indel_pos[read_pos] += 1
+        if read_align[i] == '-':
+            indel_pos[read_pos] += 1
+        else:
+            read_pos += 1
+
+    return indel_pos
