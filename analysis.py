@@ -41,6 +41,22 @@ def get_error_summary(ref, read, is_seq=False):
 
 
 def get_errors(ref, read, is_seq=False):
+    """
+        Returns insertion, deletion, substitution and total error rates for reference and read sequences.
+        Parameters
+        ----------
+        ref : string
+            Reference sequence
+        read : string
+            Read sequence
+        is_seq : bool
+            If True, ref and read are interpreted as raw sequences. Otherwise, they are interpreted as
+            filenames for the reference and read sequence.
+        Returns
+        -------
+        (float, float, float, float):
+            Insertion, deletion, substitution and total error rates.
+    """
     if len(read) == 0:
         print("LOST SEQUENCE: ignoring errors")
         return 0, 0, 0, 0
@@ -64,6 +80,14 @@ def get_similarity_score(a, b, match_score=1, mismatch_score=-1):
 
 # Smith–Waterman Alignment
 def sm_align(seq1, seq2, gap_penalty=3):
+    """
+        Computes Smith-Waterman alignment between two sequences.
+        Returns
+        -------
+        (string, string, float, [int], [int], [int]):
+            Tuple containing the produced alignment of seq1 and seq2 as strings, the alignment score computed,
+            and the number of insertion, deletion and substitution errors taking place at each position of seq1.
+    """
     m = len(seq1)
     n = len(seq2)
     ins_pos = np.zeros(m)
@@ -120,6 +144,10 @@ def sm_align(seq1, seq2, gap_penalty=3):
 
 
 def get_errors_from_file(filename, outdir='', limit=200):
+    """
+        Computes error statistics from a file containing entries of reads and reference sequences.
+        The file must be formatted with each entry consisting of 3 lines: the id, reference sequence, and read sequence.
+    """
     ins_pos = np.array([]) # relative
     dels_pos = np.array([]) # relative
     subs_pos = np.array([]) # relative

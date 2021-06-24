@@ -260,6 +260,15 @@ def parse_qscores(qscores):
 
 
 def investigate_len_vs_errors(outdir='', runs=20):
+    """
+    Plots graph for sequence length vs error rate for simulated sequences of length 150 - 1000.
+    Parameters
+    ----------
+    ourdir : string, optional
+        Directory to save figure to.
+    runs : int, optional
+        Number of runs to average over for each sequence length.
+    """
     x = range(150, 1000, 50)
     y = np.zeros(len(x))
     for i, seq_length in enumerate(x):
@@ -279,7 +288,23 @@ def investigate_len_vs_errors(outdir='', runs=20):
     plt.savefig(os.path.join(outdir, "simulated_len_vs_errors.png"), dpi=800)
 
 
-def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_indels=False):
+def evaluate_simulator(seq_length=300, runs=20, outdir='', error_rate=None, no_indels=False):
+    """
+    Evaluates error simulator for sequences of specified configuration. Will save files showing the average error
+    rate, error distribution, and read length distribution.
+    Parameters
+    ----------
+    seq_length : int, optional
+        Length of simulated sequences to evaluate.
+    runs : int, optional
+        Number of simulator runs to average over.
+    outdir : string, optional
+        Directory to save output files to.
+    error_rate : ?float, optional
+        Error rate of simulator, if user wishes to simulate sequences with specific error rate.
+    no_indels : bool, optional
+        If true, will remove all indel errors from simulated sequences.
+    """
     ins_pos = np.zeros(seq_length)
     dels_pos = np.zeros(seq_length)
     subs_pos = np.zeros(seq_length)
@@ -339,10 +364,16 @@ def evaluate_simulator(seq_length=100, runs=20, outdir='', error_rate=None, no_i
 
 
 def create_random_seq(seq_length):
+    """
+        Creates random DNA sequence of length seq_length.
+    """
     return ''.join(random.choices(['A','C','G','T'], k=seq_length))
 
 
 def fix_indels(ref, seq, qscores=None):
+    """
+        Fixes insertion and deletion errors in simulated sequence, given reference.
+    """
     print("Before fixing indels:")
     error_summary = get_error_summary(ref, seq, True)
     ins_pos, dels_pos, subs_pos, ref_align, read_align = error_summary
@@ -369,6 +400,10 @@ def fix_indels(ref, seq, qscores=None):
 
 
 def alter_error_rate(ref, seq, qscores, desired_error_rate, no_indels=False):
+    """
+        Alters error rate of simulated sequence towards desired error rate by either fixing or inserting errors
+        with some probability.
+    """
     print("Before tuning error rate:")
     error_summary = get_error_summary(ref, seq, True)
     ins_pos, dels_pos, subs_pos, ref_align, read_align = error_summary

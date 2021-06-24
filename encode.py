@@ -8,6 +8,10 @@ import time
 
 
 def ascii_to_binary(f='encoding_data/data.txt', b='encoding_data/data_bin.txt', max_len=None):
+    """
+        Converts ASCII file to binary text file.
+        If max_len is set, splits the output binary into sequences of length max_len.
+    """
     with open(f, 'r') as txtfile:
         text = txtfile.read()
 
@@ -22,6 +26,9 @@ def ascii_to_binary(f='encoding_data/data.txt', b='encoding_data/data_bin.txt', 
 
 
 def binary_to_ascii(b='encoding_data/data_bin.txt', output='encoding_data/output.txt'):
+    """
+        Converts binary text file to ASCII file.
+    """
     with open(b, 'r') as binfile:
         bin_seq = binfile.read()
     bin_seq = bin_seq.replace('\n', '')
@@ -35,6 +42,9 @@ def binary_to_ascii(b='encoding_data/data_bin.txt', output='encoding_data/output
 
 
 def binary_to_nt(b='encoding_data/data_bin.txt', output='encoding_data/data_nuc.txt'):
+    """
+        Converts binary text file to file consisting of data encoded into DNA nucleotides.
+    """
     with open(b, 'r') as binfile:
         bin_seqs = binfile.readlines()
 
@@ -47,6 +57,9 @@ def binary_to_nt(b='encoding_data/data_bin.txt', output='encoding_data/data_nuc.
 
 
 def nt_to_binary(nt='encoding_data/data_nuc.txt', output='encoding_data/data_bin.txt'):
+    """
+        Converts file consisting of data encoded into DNA nucleotides into binary text file.
+    """
     with open(nt, 'r') as ntfile:
         dna_seqs = ntfile.readlines()
 
@@ -59,16 +72,25 @@ def nt_to_binary(nt='encoding_data/data_nuc.txt', output='encoding_data/data_bin
 
 
 def binary_to_bases(bin_seq):
+    """
+        Converts binary string sequence to DNA nucleotide sequence.
+    """
     mapping = {'00': 'A', '01': 'C', '10': 'G', '11': 'T'}
     return ''.join(mapping[bin_seq[i*2:i*2+2]] for i in range(len(bin_seq)//2))
 
 
 def bases_to_binary(dna_seq):
+    """
+        Converts DNA nucleotide sequence to binary string sequence.
+    """
     mapping = {'A': '00', 'C': '01', 'G': '10', 'T': '11'}
     return ''.join(mapping[nt] for nt in dna_seq)
 
 
 def encode(fsm, f='encoding_data/data_test.txt', bin_max_len=200):
+    """
+        Encodes ASCII text file using FSM-based code into DNA nucleotide sequences.
+    """
     filename = os.path.splitext(f)[0]
     binfile = filename+'_bin.txt'
     print("Converting to binary...")
@@ -106,6 +128,9 @@ def encode(fsm, f='encoding_data/data_test.txt', bin_max_len=200):
 
 
 def decode(fsm, f='encoding_data/data_test_encoded_dna.txt', out_root='encoding_data/data_test', symbol_size=3):
+    """
+        Decodes DNA nucleotide sequences using Viterbi decoder and FSM into decoded ASCII file.
+    """
     read_encoded_bins = nt_to_binary(nt=f, output=out_root+'_read_encoded_bin.txt')
 
     def myFanOutFunction(state, observation, time):
@@ -137,6 +162,21 @@ def decode(fsm, f='encoding_data/data_test_encoded_dna.txt', out_root='encoding_
 
 
 def test_ecc(data='half_ecc_test_300_more_data/data.txt', rate='1/3', error_rate=None, short_oligos=False):
+    """
+        Encodes ASCII text file using error correcting code, runs DNA sequences through error simulator, then
+        decodes the simulated sequences and measures the error rate of data read back.
+        Parameters
+        ----------
+        data : string
+            ASCII text file to encode
+        rate : string, optional
+            Code rate for convolutional code to use. Must be either '1/3', '1/2' or '2/3'
+        error_rate : float, optional
+            Error rate for error simulator to use to simulate errors in DNA storage channel. If none specified,
+            uses default error rate of channel.
+        short_oligos : bool, optional
+            If true, will encode data into DNA sequences of length 150nt. Else, encodes data into DNA sequences of length 300nt.
+    """
 
     print(data)
     filename_root = os.path.splitext(data)[0]
@@ -238,6 +278,17 @@ def test_ecc(data='half_ecc_test_300_more_data/data.txt', rate='1/3', error_rate
 
 
 def test_no_ecc(data='no_ecc_test_150_more_data/data.txt', short_oligos=False):
+    """
+        Maps ASCII text file directly into DNA sequences with no error correcting code, runs DNA sequences through error simulator,
+        then decodes the simulated sequences and measures the error rate of data read back.
+        Parameters
+        ----------
+        data : string
+            ASCII text file to encode
+        short_oligos : bool, optional
+            If true, will encode data into DNA sequences of length 150nt. Else, encodes data into DNA sequences of length 300nt.
+    """
+
     filename_root = os.path.splitext(data)[0]
     print(data)
 
