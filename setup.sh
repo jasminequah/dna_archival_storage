@@ -4,4 +4,4 @@ pip3 install -U scrappie fast5_research matplotlib
 cd bonito
 pip3 install -r requirements.txt
 python3 setup.py develop
-bonito download --ctc
+bonito download --latestr9
